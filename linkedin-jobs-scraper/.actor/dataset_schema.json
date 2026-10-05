@@ -1,0 +1,50 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "id": {
+      "type": "string",
+      "description": "Unique LinkedIn Job ID"
+    },
+    "title": {
+      "type": "string",
+      "description": "Job title"
+    },
+    "company": {
+      "type": "string",
+      "description": "Hiring company name"
+    },
+    "location": {
+      "type": "string",
+      "description": "Job location or Remote status"
+    },
+    "url": {
+      "type": "string",
+      "description": "Direct application / posting URL"
+    },
+    "posted_at": {
+      "type": "string",
+      "description": "Date and time posted"
+    },
+    "description": {
+      "type": "string",
+      "description": "Complete job description and requirements"
+    },
+    "criteria": {
+      "type": "array",
+      "description": "Seniority level, employment type, and industry tags"
+    },
+    "search_query": {
+      "type": "string",
+      "description": "Query used to discover this position"
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "description": "Core job listing columns",
+      "transformation": {
+        "fields": ["title", "company", "location", "url", "posted_at", "criteria"]
+      }
+    }
+  }
+}

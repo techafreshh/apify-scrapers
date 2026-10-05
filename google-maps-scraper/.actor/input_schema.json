@@ -1,0 +1,30 @@
+{
+    "title": "Google Maps Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "searchQuery": {
+            "title": "Search Query",
+            "type": "string",
+            "description": "Search keyword with location (e.g. 'plumbers in Austin, TX' or 'coffee shops in London')",
+            "default": "plumbers in Austin, TX",
+            "editor": "textfield"
+        },
+        "maxResults": {
+            "title": "Max Results",
+            "type": "integer",
+            "description": "Maximum number of business leads to extract (Google Maps loads ~20 results per scroll batch)",
+            "default": 20,
+            "minimum": 1,
+            "maximum": 200,
+            "editor": "number"
+        },
+        "proxyConfiguration": {
+            "title": "Proxy Configuration",
+            "type": "object",
+            "description": "Select proxies to use. For heavy volume or international results, enable Apify Proxy.",
+            "editor": "proxy"
+        }
+    },
+    "required": ["searchQuery"]
+}

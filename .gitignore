@@ -1,0 +1,33 @@
+# Apify local state (never commit - regenerate with `apify run`)
+.storage/
+apify_storage/
+apify_data/
+apify.json
+datasets/
+key_value_stores/
+request_queues/
+
+# Secrets - live in Apify Actor env vars / secret stores, never in git
+.env
+.env.*
+token.json
+credentials.json
+*_STATE.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Local scraped output (PII - leads, emails, phone numbers)
+output/
+*.csv
+*.xlsx
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

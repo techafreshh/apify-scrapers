@@ -1,0 +1,8 @@
+{
+  "queries": ["AI Automation"],
+  "location": "Worldwide",
+  "remoteOnly": true,
+  "timeFilter": "past_week",
+  "maxJobs": 5,
+  "fetchDetails": true
+}

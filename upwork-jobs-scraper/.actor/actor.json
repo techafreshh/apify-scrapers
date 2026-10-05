@@ -1,0 +1,12 @@
+{
+    "actorSpecification": 1,
+    "name": "upwork-jobs-scraper",
+    "title": "Upwork Jobs & Freelance Lead Scraper",
+    "description": "Scrape public Upwork freelance job listings by keywords without cookies or account login. Extracts job title, full description, skills, budget, hourly rates, client spend, and verification status.",
+    "version": "0.1",
+    "meta": {
+        "templateId": "python-beautifulsoup"
+    },
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json"
+}

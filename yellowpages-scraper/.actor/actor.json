@@ -1,0 +1,12 @@
+{
+    "actorSpecification": 1,
+    "name": "yellowpages-scraper",
+    "title": "Yellow Pages Leads Scraper",
+    "description": "Fast and lightweight business lead scraper for YellowPages. Extracts company name, phone, website, address, and categories.",
+    "version": "0.1",
+    "meta": {
+        "templateId": "python-beautifulsoup"
+    },
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json"
+}

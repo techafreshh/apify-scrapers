@@ -1,0 +1,12 @@
+{
+    "actorSpecification": 1,
+    "name": "google-maps-scraper",
+    "title": "Google Maps Leads & Business Scraper",
+    "description": "Fast and lightweight lead scraper for Google Maps. Extracts business name, phone, website, rating, reviews count, address, and categories.",
+    "version": "0.1",
+    "meta": {
+        "templateId": "python-playwright"
+    },
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json"
+}

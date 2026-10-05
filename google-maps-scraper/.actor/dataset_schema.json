@@ -1,0 +1,46 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "title": {
+      "type": "string",
+      "description": "Business or company name"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Contact phone number"
+    },
+    "website": {
+      "type": "string",
+      "description": "Official company website URL"
+    },
+    "category": {
+      "type": "string",
+      "description": "Primary Google Maps business category"
+    },
+    "rating": {
+      "type": "number",
+      "description": "Average review rating from 0.0 to 5.0"
+    },
+    "reviews_count": {
+      "type": "integer",
+      "description": "Total count of reviews"
+    },
+    "address_snippet": {
+      "type": "string",
+      "description": "Address and operational details snippet"
+    },
+    "google_maps_url": {
+      "type": "string",
+      "description": "Permanent link to the Google Maps place listing"
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "description": "Key business lead fields",
+      "transformation": {
+        "fields": ["title", "phone", "website", "category", "rating", "reviews_count"]
+      }
+    }
+  }
+}

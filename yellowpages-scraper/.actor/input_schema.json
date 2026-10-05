@@ -1,0 +1,37 @@
+{
+    "title": "Yellow Pages Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "searchTerm": {
+            "title": "Search Term",
+            "type": "string",
+            "description": "Category or business type to search for (e.g. plumbers, dentists, real estate)",
+            "default": "plumbers",
+            "editor": "textfield"
+        },
+        "location": {
+            "title": "Location",
+            "type": "string",
+            "description": "City, State, or ZIP code (e.g. Austin, TX or Miami, FL)",
+            "default": "Austin, TX",
+            "editor": "textfield"
+        },
+        "maxPages": {
+            "title": "Max Pages",
+            "type": "integer",
+            "description": "Maximum number of pagination pages to scrape (each page has ~30 results)",
+            "default": 3,
+            "minimum": 1,
+            "maximum": 50,
+            "editor": "number"
+        },
+        "proxyConfiguration": {
+            "title": "Proxy Configuration",
+            "type": "object",
+            "description": "Select proxies to use for scraping.",
+            "editor": "proxy"
+        }
+    },
+    "required": ["searchTerm", "location"]
+}

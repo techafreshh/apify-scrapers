@@ -1,0 +1,12 @@
+{
+    "actorSpecification": 1,
+    "name": "linkedin-jobs-scraper",
+    "title": "LinkedIn Jobs & Remote Career Scraper",
+    "description": "Fast and reliable LinkedIn jobs scraper using public guest endpoints. Extract title, company, location, full description, and job criteria without account credentials or cookies.",
+    "version": "0.1",
+    "meta": {
+        "templateId": "python-beautifulsoup"
+    },
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json"
+}
