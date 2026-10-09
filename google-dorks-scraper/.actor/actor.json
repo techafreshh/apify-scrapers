@@ -1,0 +1,12 @@
+{
+    "actorSpecification": 1,
+    "name": "google-dorks-scraper",
+    "title": "Google Dorks SERP Scraper",
+    "description": "Run Google dork queries (site:, inurl:, filetype:, intitle:) via headless Chromium and extract ranked URLs, titles, and snippets. For OSINT and authorized security research.",
+    "version": "0.1",
+    "meta": {
+        "templateId": "python-playwright"
+    },
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json"
+}

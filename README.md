@@ -12,6 +12,7 @@ All four run **without cookies, logins, or account credentials** — they hit pu
 | [`upwork-jobs-scraper`](upwork-jobs-scraper/) | `T9kIGjwzvgE3qHXxf` | Freelance gigs, skills, budgets, client spend history, verification status |
 | [`google-maps-scraper`](google-maps-scraper/) | `urrEtlATpXz0VDKg5` | Local business leads, phone, website, rating, review count, address |
 | [`yellowpages-scraper`](yellowpages-scraper/) | `TDeaCVxV9BiCGh0re` | Business leads, phone, website, categories, years in business |
+| [`google-dorks-scraper`](google-dorks-scraper/) | `RR5TOBdPlAUzlJWd7` | Google dork SERP results: ranked URL, title, snippet per query |
 
 Each actor's README documents its own input parameters and output schema.
 

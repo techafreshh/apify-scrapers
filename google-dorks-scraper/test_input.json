@@ -1,0 +1,11 @@
+{
+  "dorkQueries": [
+    "site:github.com python asyncio scraper",
+    "filetype:pdf intitle:resume marketing manager"
+  ],
+  "maxPagesPerQuery": 2,
+  "maxResults": 20,
+  "hl": "en",
+  "gl": "us",
+  "delaySec": 2.5
+}
