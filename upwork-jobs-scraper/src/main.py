@@ -194,9 +194,16 @@ def parse_dom_tiles(soup: BeautifulSoup, query: str) -> List[Dict[str, Any]]:
         budget_max = None
         exp_level = "Intermediate"
         duration = ""
+        is_payment_verified = False
 
         for li in article.find_all("li"):
             text = li.get_text(" ", strip=True)
+            text_lower = text.lower()
+            if "payment unverified" in text_lower:
+                is_payment_verified = False
+            elif "payment verified" in text_lower:
+                is_payment_verified = True
+
             if "hourly" in text.lower():
                 job_type = "hourly"
                 nums = re.findall(r"\$([0-9,.]+)", text)
@@ -243,7 +250,7 @@ def parse_dom_tiles(soup: BeautifulSoup, query: str) -> List[Dict[str, Any]]:
             "duration": duration,
             "client": {
                 "country": None,
-                "is_payment_verified": False,
+                "is_payment_verified": is_payment_verified,
                 "total_spent": None,
                 "total_reviews": None,
                 "rating": None,
@@ -365,6 +372,8 @@ async def main() -> None:
                         "page": page_num,
                         "per_page": 50,
                     }
+                    if payment_verified_only:
+                        params["payment_verified"] = 1
                     search_url = f"https://www.upwork.com/nx/search/jobs/?{urllib.parse.urlencode(params)}"
                     print(f"[*] Navigating to page {page_num}: {search_url}", flush=True)
 
