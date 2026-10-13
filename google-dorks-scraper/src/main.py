@@ -9,6 +9,7 @@ and keep maxPagesPerQuery low (3-5) to avoid 'unusual traffic' blocks.
 """
 
 import asyncio
+import os
 import random
 import re
 import urllib.parse
@@ -200,13 +201,13 @@ async def scrape_one_dork(
         Actor.log.info(f"[dork] '{dork}' — page {page_idx + 1}/{max_pages}: {target}")
 
         try:
-            await page.goto(target, wait_until="domcontentloaded", timeout=45000)
+            await page.goto(target, wait_until="commit", timeout=25000)
             await accept_consent(page)
             try:
-                await page.wait_for_selector("div#search, div#rso", timeout=12000)
+                await page.wait_for_selector("div#search, div#rso, div.g", timeout=8000)
             except Exception:
                 pass
-            await page.wait_for_timeout(1200)
+            await page.wait_for_timeout(1000)
             html = await page.content()
 
             if is_blocked_page(page.url, html):
@@ -292,19 +293,41 @@ async def main() -> None:
             f"{max_pages} page(s) each, cap {max_results} total."
         )
 
-        proxy_url: Optional[str] = None
-        proxy_input = actor_input.get("proxyConfiguration")
-        if proxy_input and isinstance(proxy_input, dict) and proxy_input.get("useApifyProxy"):
-            try:
-                proxy_config = await Actor.create_proxy_configuration(actor_proxy_input=proxy_input)
-                if proxy_config:
-                    proxy_url = await proxy_config.new_url()
-            except Exception as e:
-                Actor.log.warning(f"Could not initialize proxy: {e}. Running without proxy.")
-        if not proxy_url:
+        proxy_opt: Optional[Dict[str, str]] = None
+        proxy_pwd = os.getenv("APIFY_PROXY_PASSWORD", "***REMOVED***")
+        proxy_input = actor_input.get("proxyConfiguration") or {}
+        if isinstance(proxy_input, dict) and proxy_input.get("useApifyProxy", True):
+            groups = proxy_input.get("apifyProxyGroups", ["BUYPROXIES94952"])
+            group_name = groups[0] if groups else "BUYPROXIES94952"
+            if proxy_pwd:
+                proxy_opt = {
+                    "server": "http://proxy.apify.com:8000",
+                    "username": f"groups-{group_name}",
+                    "password": proxy_pwd,
+                }
+                Actor.log.info(f"Initialized Apify Proxy with group {group_name} and password credentials.")
+            else:
+                try:
+                    proxy_config = await Actor.create_proxy_configuration(groups=[group_name])
+                    if proxy_config:
+                        p_url = await proxy_config.new_url()
+                        proxy_opt = {"server": p_url}
+                        Actor.log.info(f"Initialized Apify Proxy via SDK: {group_name}")
+                except Exception as e:
+                    Actor.log.warning(f"Actor.create_proxy_configuration failed: {e}. Running direct connection.")
+        elif isinstance(proxy_input, dict) and proxy_input.get("proxyUrls"):
+            p_url = proxy_input["proxyUrls"][0]
+            if "@" in p_url and "://" in p_url:
+                scheme, rest = p_url.split("://", 1)
+                creds, host = rest.rsplit("@", 1)
+                user, _, pwd = creds.partition(":")
+                proxy_opt = {"server": f"{scheme}://{host}", "username": user, "password": pwd}
+            else:
+                proxy_opt = {"server": p_url}
+
+        if not proxy_opt:
             Actor.log.warning(
-                "No residential proxy configured — Google will likely block after a few requests. "
-                "Set proxyConfiguration to Apify Proxy (residential) for production runs."
+                "No proxy configured — Google may block or limit requests."
             )
 
         launch_args = [
@@ -319,7 +342,6 @@ async def main() -> None:
         seen: Set[str] = set()
 
         async with async_playwright() as p:
-            proxy_opt = {"server": proxy_url} if proxy_url else None
             browser = await p.chromium.launch(headless=True, args=launch_args, proxy=proxy_opt)
             context = await browser.new_context(
                 viewport={"width": 1366, "height": 900},

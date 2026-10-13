@@ -1,54 +1,79 @@
 {
-    "title": "Upwork Jobs Scraper Input",
-    "type": "object",
-    "schemaVersion": 1,
-    "properties": {
-        "queries": {
-            "title": "Search Queries / Keywords",
-            "type": "array",
-            "description": "Keywords or job titles to search for on Upwork (e.g. ['n8n', 'AI Automation', 'Python Scraping'])",
-            "default": ["n8n", "AI Automation"],
-            "editor": "stringList"
-        },
-        "maxJobs": {
-            "title": "Max Jobs to Scrape",
-            "type": "integer",
-            "description": "Total maximum job postings to harvest across all queries",
-            "default": 30,
-            "minimum": 1,
-            "maximum": 500,
-            "editor": "number"
-        },
-        "sort": {
-            "title": "Sort Order",
-            "type": "string",
-            "description": "Sort order for jobs (recency or relevance)",
-            "default": "recency",
-            "editor": "select",
-            "enum": ["recency", "relevance"],
-            "enumTitles": ["Most Recent First", "Most Relevant"]
-        },
-        "paymentVerifiedOnly": {
-            "title": "Payment Verified Clients Only",
-            "type": "boolean",
-            "description": "Only keep jobs posted by clients with a verified payment method",
-            "default": false
-        },
-        "contractorTier": {
-            "title": "Experience Level",
-            "type": "string",
-            "description": "Filter by required experience level",
-            "default": "any",
-            "editor": "select",
-            "enum": ["any", "entry", "intermediate", "expert"],
-            "enumTitles": ["Any Experience", "Entry Level", "Intermediate", "Expert"]
-        },
-        "proxyConfiguration": {
-            "title": "Proxy Configuration",
-            "type": "object",
-            "description": "Optional proxy settings. If encountering Cloudflare blocks in certain regions, enable Apify Proxy.",
-            "editor": "proxy"
-        }
+  "title": "Upwork Jobs & Freelancer Scraper Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "operation": {
+      "title": "Operation",
+      "type": "string",
+      "description": "What to scrape: searchJobs, searchFreelancers, jobDetail, or freelancerProfile",
+      "default": "searchJobs",
+      "editor": "select",
+      "enum": ["searchJobs", "searchFreelancers", "jobDetail", "freelancerProfile"],
+      "enumTitles": ["Search Jobs", "Search Freelancers", "Job Detail", "Freelancer Profile"]
     },
-    "required": ["queries"]
+    "queries": {
+      "title": "Search Queries / Keywords",
+      "type": "array",
+      "description": "Keywords to search on Upwork (e.g. ['n8n', 'AI Automation'])",
+      "default": ["n8n", "AI Automation"],
+      "editor": "stringList"
+    },
+    "urls": {
+      "title": "Detail URLs",
+      "type": "array",
+      "description": "Upwork job or freelancer URLs to enrich (for jobDetail / freelancerProfile operations)",
+      "default": [],
+      "editor": "stringList"
+    },
+    "maxPages": {
+      "title": "Max Pages",
+      "type": "integer",
+      "description": "Maximum pages to fetch per search term",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 50,
+      "editor": "number"
+    },
+    "maxJobs": {
+      "title": "Max Results",
+      "type": "integer",
+      "description": "Total maximum records to harvest across all queries",
+      "default": 30,
+      "minimum": 1,
+      "maximum": 500,
+      "editor": "number"
+    },
+    "sort": {
+      "title": "Sort Order",
+      "type": "string",
+      "description": "Sort order for jobs (recency or relevance)",
+      "default": "recency",
+      "editor": "select",
+      "enum": ["recency", "relevance"],
+      "enumTitles": ["Most Recent First", "Most Relevant"]
+    },
+    "paymentVerifiedOnly": {
+      "title": "Payment Verified Clients Only",
+      "type": "boolean",
+      "description": "Only keep jobs from clients with verified payment",
+      "default": false
+    },
+    "contractorTier": {
+      "title": "Experience Level",
+      "type": "string",
+      "description": "Filter by required experience level",
+      "default": "any",
+      "editor": "select",
+      "enum": ["any", "entry", "intermediate", "expert"],
+      "enumTitles": ["Any Experience", "Entry Level", "Intermediate", "Expert"]
+    },
+    "proxyConfiguration": {
+      "title": "Proxy Configuration",
+      "type": "object",
+      "description": "Proxy settings. Enable Apify Proxy (RESIDENTIAL) to bypass Cloudflare.",
+      "editor": "proxy"
+    }
+  },
+  "required": ["operation"]
 }
