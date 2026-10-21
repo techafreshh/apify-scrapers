@@ -1,5 +1,7 @@
 # Apify Scrapers
 
+> **Prerequisite:** To use these scrapers you must have a developer account on [Apify](https://apify.com/). Sign up free at [console.apify.com](https://console.apify.com) — every Actor is run, tested, and deployed through your Apify account, and all scraped datasets are stored there.
+
 Production Apify Actors for lead generation and opportunity scouting. Four standalone scrapers, each with its own Docker image, input schema, and dataset schema.
 
 All four run **without cookies, logins, or account credentials** — they hit public endpoints and browser-grade TLS fingerprints rather than authenticated sessions, so there's no cookie expiry and no account-ban risk.

@@ -1,0 +1,17 @@
+{
+  "startUrls": [
+    {
+      "id": 8909,
+      "business_name": "Navarro Roofing",
+      "url": "http://navarroroofingcorp.com"
+    },
+    {
+      "id": 8544,
+      "business_name": "Sweep Home Chicago",
+      "url": "http://www.sweephome.com"
+    }
+  ],
+  "maxDepth": 3,
+  "checkSocials": true,
+  "maxConcurrency": 2
+}

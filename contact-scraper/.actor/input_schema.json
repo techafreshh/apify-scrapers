@@ -1,0 +1,48 @@
+{
+    "title": "Business Contact & Email Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "startUrls": {
+            "title": "Start URLs",
+            "type": "array",
+            "description": "List of website URLs to scrape for contact information and emails. Can be URLs or objects with 'url', 'id', 'business_name'.",
+            "editor": "requestListSources",
+            "prefill": [
+                { "url": "http://navarroroofingcorp.com" }
+            ]
+        },
+        "maxDepth": {
+            "title": "Max Depth",
+            "type": "integer",
+            "description": "How many contact/about subpages to inspect if no email is found on the homepage.",
+            "default": 3,
+            "minimum": 0,
+            "maximum": 5,
+            "editor": "number"
+        },
+        "checkSocials": {
+            "title": "Check Social Profiles",
+            "type": "boolean",
+            "description": "If true, attempts to inspect linked Facebook or social pages for listed contact emails when none are found on the site.",
+            "default": true,
+            "editor": "checkbox"
+        },
+        "maxConcurrency": {
+            "title": "Max Concurrency",
+            "type": "integer",
+            "description": "Number of concurrent browser pages.",
+            "default": 4,
+            "minimum": 1,
+            "maximum": 10,
+            "editor": "number"
+        },
+        "proxyConfiguration": {
+            "title": "Proxy Configuration",
+            "type": "object",
+            "description": "Apify proxy settings. Recommended for bypassing Cloudflare / anti-bot checks.",
+            "editor": "proxy"
+        }
+    },
+    "required": ["startUrls"]
+}

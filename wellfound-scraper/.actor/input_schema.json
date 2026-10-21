@@ -1,0 +1,55 @@
+{
+    "title": "Wellfound Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "listingUrls": {
+            "title": "Listing URLs",
+            "type": "array",
+            "description": "Wellfound listing pages to crawl, e.g. ['https://wellfound.com/jobs', 'https://wellfound.com/jobs?r=1']",
+            "default": ["https://wellfound.com/jobs"],
+            "editor": "stringList"
+        },
+        "maxCompanies": {
+            "title": "Max Companies",
+            "type": "integer",
+            "description": "Maximum companies to extract",
+            "default": 25,
+            "minimum": 1,
+            "maximum": 500,
+            "editor": "number"
+        },
+        "fetchDetails": {
+            "title": "Fetch Company Pages",
+            "type": "boolean",
+            "description": "Visit each company page to capture funding stage, website and description. Disable for a fast listing-only pass (team size and tags only).",
+            "default": true
+        },
+        "headless": {
+            "title": "Headless Mode",
+            "type": "boolean",
+            "description": "Run headless. Leave off (headful via xvfb) for bot-protected sites — headful passes Cloudflare far more often.",
+            "default": false
+        },
+        "useProxy": {
+            "title": "Use Residential Proxy",
+            "type": "boolean",
+            "description": "Route through Apify residential proxy. Recommended: Wellfound applies aggressive bot detection.",
+            "default": true
+        },
+        "proxyGroups": {
+            "title": "Proxy Groups",
+            "type": "array",
+            "description": "Apify Proxy groups to use when useProxy is on",
+            "default": ["BUYPROXIES94952"],
+            "editor": "stringList"
+        },
+        "proxyConfiguration": {
+            "title": "Advanced Proxy Configuration",
+            "type": "object",
+            "description": "Overrides useProxy/proxyGroups when supplied.",
+            "editor": "proxy"
+        }
+    },
+    "required": ["maxCompanies"]
+}

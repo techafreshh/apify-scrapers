@@ -1,0 +1,62 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "name": {
+      "type": "string",
+      "description": "Product name"
+    },
+    "slug": {
+      "type": "string",
+      "description": "Indie Hackers slug"
+    },
+    "url": {
+      "type": "string",
+      "description": "Product profile URL"
+    },
+    "website": {
+      "type": "string",
+      "description": "External product website"
+    },
+    "tagline": {
+      "type": "string",
+      "description": "Short product tagline"
+    },
+    "description": {
+      "type": "string",
+      "description": "Long product description"
+    },
+    "monthly_revenue": {
+      "type": "string",
+      "description": "Disclosed monthly revenue, raw (e.g. '$5K / mo')"
+    },
+    "monthly_revenue_usd": {
+      "type": "number",
+      "description": "Monthly revenue normalized to a USD number when parseable"
+    },
+    "metrics": {
+      "type": "object",
+      "description": "All product metrics (posts, followers, upvotes) keyed by label"
+    },
+    "sorting": {
+      "type": "string",
+      "description": "Directory listing this product was discovered in"
+    },
+    "source": {
+      "type": "string",
+      "description": "Data source"
+    },
+    "scraped_at": {
+      "type": "string",
+      "description": "ISO-8601 scrape timestamp"
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "description": "Core product columns",
+      "transformation": {
+        "fields": ["name", "tagline", "website", "monthly_revenue", "monthly_revenue_usd", "url"]
+      }
+    }
+  }
+}

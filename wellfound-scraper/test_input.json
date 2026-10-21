@@ -1,0 +1,6 @@
+{
+  "listingUrls": ["https://wellfound.com/jobs"],
+  "maxCompanies": 3,
+  "fetchDetails": true,
+  "useProxy": true
+}

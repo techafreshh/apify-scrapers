@@ -1,0 +1,62 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "name": {
+      "type": "string",
+      "description": "Startup name"
+    },
+    "slug": {
+      "type": "string",
+      "description": "BetaList slug"
+    },
+    "url": {
+      "type": "string",
+      "description": "BetaList profile URL"
+    },
+    "website": {
+      "type": "string",
+      "description": "Real startup website, resolved via the /visit redirect"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Registrable domain, for entity matching across sources"
+    },
+    "tagline": {
+      "type": "string",
+      "description": "Short tagline"
+    },
+    "description": {
+      "type": "string",
+      "description": "Full startup description"
+    },
+    "categories": {
+      "type": "array",
+      "description": "Category and subcategory breadcrumbs"
+    },
+    "boosted": {
+      "type": "boolean",
+      "description": "Whether the listing is marked Boosted on BetaList"
+    },
+    "queries": {
+      "type": "array",
+      "description": "Queries this startup was discovered by"
+    },
+    "source": {
+      "type": "string",
+      "description": "Data source"
+    },
+    "scraped_at": {
+      "type": "string",
+      "description": "ISO-8601 scrape timestamp"
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "description": "Core startup columns",
+      "transformation": {
+        "fields": ["name", "tagline", "domain", "categories", "url"]
+      }
+    }
+  }
+}

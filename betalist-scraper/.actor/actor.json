@@ -1,0 +1,12 @@
+{
+    "actorSpecification": 1,
+    "name": "betalist-scraper",
+    "title": "BetaList Startups Scraper",
+    "description": "Extract BetaList startup profiles with plain HTTP: name, tagline, description, real website (resolved via the /visit redirect) and category breadcrumbs. No login, no browser, no proxy required.",
+    "version": "0.1",
+    "meta": {
+        "templateId": "python-beautifulsoup"
+    },
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json"
+}

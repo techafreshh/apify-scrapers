@@ -1,0 +1,12 @@
+{
+    "actorSpecification": 1,
+    "name": "contact-scraper",
+    "title": "Business Contact & Email Scraper",
+    "description": "Deep contact and email scraper for business websites. Extracts verified emails, phone numbers, contact subpages, and social media links with headless browser rendering.",
+    "version": "0.1",
+    "meta": {
+        "templateId": "python-playwright"
+    },
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json"
+}

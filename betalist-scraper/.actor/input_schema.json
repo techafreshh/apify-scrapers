@@ -1,0 +1,51 @@
+{
+    "title": "BetaList Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "queries": {
+            "title": "Search Queries",
+            "type": "array",
+            "description": "Terms to search BetaList for. Each returns ~21 startups per page.",
+            "default": ["ai", "automation", "saas", "developer", "marketing", "productivity"],
+            "editor": "stringList"
+        },
+        "maxPagesPerQuery": {
+            "title": "Max Pages Per Query",
+            "type": "integer",
+            "description": "How many result pages to walk per query",
+            "default": 2,
+            "minimum": 1,
+            "maximum": 20,
+            "editor": "number"
+        },
+        "maxStartups": {
+            "title": "Max Startups",
+            "type": "integer",
+            "description": "Maximum startups to extract in total",
+            "default": 60,
+            "minimum": 1,
+            "maximum": 500,
+            "editor": "number"
+        },
+        "fetchWebsite": {
+            "title": "Resolve Real Website",
+            "type": "boolean",
+            "description": "Follow each startup's /visit redirect to capture the real website domain. Costs one cheap extra request per startup.",
+            "default": true
+        },
+        "useProxy": {
+            "title": "Use Proxy",
+            "type": "boolean",
+            "description": "BetaList is not bot-protected, so this defaults to off to save cost.",
+            "default": false
+        },
+        "proxyConfiguration": {
+            "title": "Advanced Proxy Configuration",
+            "type": "object",
+            "description": "Overrides useProxy when supplied.",
+            "editor": "proxy"
+        }
+    },
+    "required": ["maxStartups"]
+}

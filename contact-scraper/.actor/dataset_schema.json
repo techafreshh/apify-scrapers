@@ -1,0 +1,65 @@
+{
+    "actorSpecification": 1,
+    "fields": {
+        "id": {
+            "type": "string",
+            "description": "Lead or record identifier"
+        },
+        "business_name": {
+            "type": "string",
+            "description": "Business or company name"
+        },
+        "url": {
+            "type": "string",
+            "description": "Target website URL"
+        },
+        "primary_email": {
+            "type": "string",
+            "description": "Best extracted email address"
+        },
+        "all_emails": {
+            "type": "array",
+            "description": "All discovered candidate email addresses"
+        },
+        "phone": {
+            "type": "string",
+            "description": "Discovered phone number"
+        },
+        "social_links": {
+            "type": "object",
+            "description": "Discovered social media URLs"
+        },
+        "pages_visited": {
+            "type": "array",
+            "description": "URLs visited during extraction"
+        },
+        "status": {
+            "type": "string",
+            "description": "Outcome status: found, not_found, or error"
+        }
+    },
+    "views": {
+        "overview": {
+            "title": "Contacts Overview",
+            "transformation": {
+                "fields": [
+                    "business_name",
+                    "primary_email",
+                    "phone",
+                    "url",
+                    "status"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "columns": {
+                    "business_name": { "label": "Business" },
+                    "primary_email": { "label": "Email" },
+                    "phone": { "label": "Phone" },
+                    "url": { "label": "Website" },
+                    "status": { "label": "Status" }
+                }
+            }
+        }
+    }
+}

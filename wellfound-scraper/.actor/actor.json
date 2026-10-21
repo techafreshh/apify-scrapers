@@ -1,0 +1,12 @@
+{
+    "actorSpecification": 1,
+    "name": "wellfound-scraper",
+    "title": "Wellfound (AngelList) Startups Scraper",
+    "description": "Extract Wellfound startup profiles with a real browser: company name, website, team size, funding stage, HQ, industry, description and open roles. Optional per-company detail pass for funding stage.",
+    "version": "0.1",
+    "meta": {
+        "templateId": "python-playwright"
+    },
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json"
+}

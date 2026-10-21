@@ -1,0 +1,12 @@
+{
+    "actorSpecification": 1,
+    "name": "indiehackers-scraper",
+    "title": "Indie Hackers Products Scraper",
+    "description": "Extract Indie Hackers product profiles with a real browser: name, tagline, website, monthly revenue and product metrics. Uses Playwright + optional residential proxy to get past Cloudflare bot management.",
+    "version": "0.2",
+    "meta": {
+        "templateId": "python-playwright"
+    },
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json"
+}

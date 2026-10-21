@@ -1,0 +1,5 @@
+{
+  "sortings": ["recently-added"],
+  "maxProducts": 5,
+  "fetchDetails": true
+}

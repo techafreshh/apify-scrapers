@@ -1,0 +1,78 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "name": {
+      "type": "string",
+      "description": "Company name"
+    },
+    "slug": {
+      "type": "string",
+      "description": "Wellfound slug"
+    },
+    "url": {
+      "type": "string",
+      "description": "Wellfound company profile URL"
+    },
+    "website": {
+      "type": "string",
+      "description": "External company website"
+    },
+    "tagline": {
+      "type": "string",
+      "description": "Short company description"
+    },
+    "description": {
+      "type": "string",
+      "description": "Full company description"
+    },
+    "funding_stage": {
+      "type": "string",
+      "description": "Funding stage as labelled by Wellfound (e.g. Seed, Series A)"
+    },
+    "team_size": {
+      "type": "string",
+      "description": "Raw headcount band (e.g. '11-50')"
+    },
+    "team_size_estimate": {
+      "type": "number",
+      "description": "Midpoint of the headcount band as a number"
+    },
+    "location": {
+      "type": "string",
+      "description": "Headquarters or job location"
+    },
+    "industry": {
+      "type": "string",
+      "description": "Industry label (e.g. B2B, B2C, Health)"
+    },
+    "tags": {
+      "type": "array",
+      "description": "All card tags including market stage"
+    },
+    "open_roles": {
+      "type": "number",
+      "description": "Open positions advertised, when present"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "Company logo URL"
+    },
+    "source": {
+      "type": "string",
+      "description": "Data source"
+    },
+    "scraped_at": {
+      "type": "string",
+      "description": "ISO-8601 scrape timestamp"
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "description": "Core startup columns",
+      "transformation": {
+        "fields": ["name", "tagline", "funding_stage", "team_size", "location", "industry", "url"]
+      }
+    }
+  }
+}

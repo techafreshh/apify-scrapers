@@ -1,0 +1,7 @@
+{
+  "queries": ["ai"],
+  "maxPagesPerQuery": 1,
+  "maxStartups": 5,
+  "fetchWebsite": true,
+  "useProxy": false
+}
