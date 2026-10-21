@@ -294,7 +294,7 @@ async def main() -> None:
         )
 
         proxy_opt: Optional[Dict[str, str]] = None
-        proxy_pwd = os.getenv("APIFY_PROXY_PASSWORD", "***REMOVED***")
+        proxy_pwd = os.getenv("APIFY_PROXY_PASSWORD", "")
         proxy_input = actor_input.get("proxyConfiguration") or {}
         if isinstance(proxy_input, dict) and proxy_input.get("useApifyProxy", True):
             groups = proxy_input.get("apifyProxyGroups", ["BUYPROXIES94952"])
