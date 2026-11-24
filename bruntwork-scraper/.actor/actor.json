@@ -1,0 +1,12 @@
+{
+    "actorSpecification": 1,
+    "name": "bruntwork-scraper",
+    "title": "BruntWork Careers Scraper",
+    "description": "Scrape BruntWork careers (bruntworkcareers.co) with plain HTTP: role id, title, commitment, full description, apply URL and a timezone hint. The site is Next.js with no public feed, but both the listing and role pages are server-rendered, so no browser or proxy is needed.",
+    "version": "0.1",
+    "meta": {
+        "templateId": "python-beautifulsoup"
+    },
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json"
+}

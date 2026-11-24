@@ -1,0 +1,19 @@
+{
+    "actorSpecification": 1,
+    "fields": {
+        "external_id": "BruntWork numeric job id (11 digits)",
+        "title": "Role title",
+        "company": "Constant: BruntWork",
+        "location": "Constant: Remote (BruntWork is a remote-staffing employer)",
+        "remote": "Always true for this board",
+        "employment_type": "Commitment as shown on the card, e.g. 'Full Time (35 hours or more per week)'",
+        "timezone_hint": "Time zone from the role's schedule line, when the description has one",
+        "posted_at": "Always null: the site exposes no posting dates",
+        "description": "Full role description as plain text",
+        "description_html": "Full role description as HTML",
+        "apply_url": "Absolute /jobs/<id>/apply URL",
+        "source_url": "Role page URL",
+        "source": "Constant: bruntwork_careers",
+        "scraped_at": "Crawl timestamp, ISO-8601 UTC"
+    }
+}
