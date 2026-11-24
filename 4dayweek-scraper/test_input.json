@@ -1,0 +1,7 @@
+{
+    "maxJobs": 10,
+    "timeFilter": "past_week",
+    "workArrangement": "remote",
+    "fetchDetails": true,
+    "maxPages": 20
+}

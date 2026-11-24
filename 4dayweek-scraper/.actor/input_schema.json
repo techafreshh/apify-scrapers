@@ -1,0 +1,73 @@
+{
+    "title": "4dayweek.io Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "maxJobs": {
+            "title": "Max Jobs",
+            "type": "integer",
+            "description": "Maximum number of postings to save.",
+            "default": 100,
+            "minimum": 1,
+            "maximum": 2000,
+            "editor": "number"
+        },
+        "timeFilter": {
+            "title": "Time Filter",
+            "type": "string",
+            "description": "Keep postings published within this window (based on the posting date, not the crawl date).",
+            "default": "past_week",
+            "enum": ["past_24h", "past_week", "past_month", "any"],
+            "enumTitles": ["Past 24 hours", "Past week", "Past month", "Any"],
+            "editor": "select"
+        },
+        "workArrangement": {
+            "title": "Work Arrangement",
+            "type": "string",
+            "description": "Filter by arrangement. The API ignores its own filter params, so filtering happens inside the Actor.",
+            "default": "remote",
+            "enum": ["remote", "hybrid", "onsite", "any"],
+            "enumTitles": ["Remote only", "Hybrid only", "Onsite only", "Any"],
+            "editor": "select"
+        },
+        "regions": {
+            "title": "Regions",
+            "type": "array",
+            "description": "Optional allow-list matched against each posting's countries and continents, case-insensitive (e.g. ['Europe', 'United Kingdom', 'Nigeria']). Leave empty for everywhere.",
+            "editor": "stringList"
+        },
+        "includeLocked": {
+            "title": "Include Locked (Early Access) Postings",
+            "type": "boolean",
+            "description": "Postings from the last ~2 days are paywalled ('early access'): they have no company name, no slug and no page to read. Off by default because the rows are unusable.",
+            "default": false,
+            "editor": "checkbox"
+        },
+        "fetchDetails": {
+            "title": "Fetch Full Descriptions",
+            "type": "boolean",
+            "description": "Read each emitted posting's page for the schema.org JobPosting block (full description, salary, applicant-location requirements). One extra request per saved job.",
+            "default": true,
+            "editor": "checkbox"
+        },
+        "maxPages": {
+            "title": "Max API Pages",
+            "type": "integer",
+            "description": "Safety cap on API pages walked (25 rows each). The feed is newest-first, so the default is plenty for a week of postings.",
+            "default": 60,
+            "minimum": 1,
+            "maximum": 400,
+            "editor": "number"
+        },
+        "requestDelaySecs": {
+            "title": "Request Delay (seconds)",
+            "type": "number",
+            "description": "Pause between requests. The API drops connections under burst load; 1.5s is safe and keeps a 100-job run under a minute or two.",
+            "default": 1.5,
+            "minimum": 0,
+            "maximum": 10,
+            "editor": "number"
+        }
+    },
+    "required": []
+}

@@ -1,0 +1,12 @@
+{
+    "actorSpecification": 1,
+    "name": "4dayweek-scraper",
+    "title": "4dayweek.io Job Scraper",
+    "description": "Scrape 4-day-week job postings from 4dayweek.io's public JSON API with plain HTTP: title, company, location, remote flag, schedule, salary, category, level and full description from the job page's schema.org JobPosting block. No browser, no proxy, no login.",
+    "version": "0.1",
+    "meta": {
+        "templateId": "python-beautifulsoup"
+    },
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json"
+}
