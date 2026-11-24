@@ -1,0 +1,25 @@
+{
+    "actorSpecification": 1,
+    "fields": {
+        "external_id": "HiringCafe slug id (last slug segment)",
+        "title": "Job title",
+        "company": "Hiring company",
+        "location": "City list, else the country list (as published)",
+        "cities": "All cities on the posting",
+        "countries": "All countries on the posting (jobLocation + applicantLocationRequirements)",
+        "country": "First country on the posting",
+        "remote": "True when the posting is TELECOMMUTE / described as remote",
+        "employment_type": "FULL_TIME / PART_TIME / CONTRACTOR / …",
+        "salary_min": "Salary lower bound as a number",
+        "salary_max": "Salary upper bound as a number",
+        "salary_currency": "ISO currency code",
+        "salary_period": "HOUR / DAY / WEEK / MONTH / YEAR",
+        "posted_at": "Posting date, ISO-8601 (null when the page carries none)",
+        "description": "Full description as plain text (capped at 40k chars)",
+        "apply_url": "External apply destination when the page exposes one, else null",
+        "source_url": "HiringCafe posting URL",
+        "card_text": "Raw listing-card text (title, company, location, date) as a fallback breadcrumb",
+        "source": "Constant: hiringcafe",
+        "scraped_at": "Crawl timestamp, ISO-8601 UTC"
+    }
+}

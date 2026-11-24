@@ -1,0 +1,74 @@
+{
+    "title": "HiringCafe Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "queries": {
+            "title": "Queries",
+            "type": "array",
+            "description": "Optional keyword filter matched against the listing card text (title, company, location). Leave empty to take the recently-posted feed as-is and filter downstream.",
+            "editor": "stringList"
+        },
+        "maxJobs": {
+            "title": "Max Jobs",
+            "type": "integer",
+            "description": "Maximum postings to save. Each saved posting costs one page load through the proxy.",
+            "default": 50,
+            "minimum": 1,
+            "maximum": 500,
+            "editor": "number"
+        },
+        "timeFilter": {
+            "title": "Time Filter",
+            "type": "string",
+            "description": "Keep postings whose posted date falls inside this window. Postings without a parseable date are kept.",
+            "default": "past_week",
+            "enum": ["past_24h", "past_week", "past_month", "any"],
+            "enumTitles": ["Past 24 hours", "Past week", "Past month", "Any"],
+            "editor": "select"
+        },
+        "maxScrolls": {
+            "title": "Max Scrolls",
+            "type": "integer",
+            "description": "How many times to scroll the recently-posted list to load more cards before starting.",
+            "default": 6,
+            "minimum": 0,
+            "maximum": 40,
+            "editor": "number"
+        },
+        "requestDelaySecs": {
+            "title": "Request Delay (seconds)",
+            "type": "number",
+            "description": "Pause between posting page loads. Cloudflare notices bursts more than pace.",
+            "default": 3,
+            "minimum": 0,
+            "maximum": 30,
+            "editor": "number"
+        },
+        "headless": {
+            "title": "Headless",
+            "type": "boolean",
+            "description": "Run without a visible window. Turn off to debug what Cloudflare is showing.",
+            "default": true,
+            "editor": "checkbox"
+        },
+        "proxyGroups": {
+            "title": "Apify Proxy Groups",
+            "type": "array",
+            "description": "Proxy groups used when proxyConfiguration is not supplied. Residential is what Cloudflare expects; BUYPROXIES94952 / StaticUS3 are cheaper fallbacks.",
+            "default": ["RESIDENTIAL"],
+            "editor": "stringList"
+        },
+        "proxyConfiguration": {
+            "title": "Proxy Configuration",
+            "type": "object",
+            "description": "Full proxy configuration. Overrides proxyGroups when supplied.",
+            "editor": "proxy",
+            "default": {
+                "useApifyProxy": true,
+                "apifyProxyGroups": ["RESIDENTIAL"]
+            }
+        }
+    },
+    "required": []
+}

@@ -1,0 +1,12 @@
+{
+    "queries": [],
+    "maxJobs": 5,
+    "timeFilter": "past_week",
+    "maxScrolls": 2,
+    "requestDelaySecs": 3,
+    "headless": true,
+    "proxyConfiguration": {
+        "useApifyProxy": true,
+        "apifyProxyGroups": ["RESIDENTIAL"]
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "actorSpecification": 1,
+    "name": "hiringcafe-scraper",
+    "title": "HiringCafe Job Scraper",
+    "description": "Scrape HiringCafe's recently posted jobs through a real browser + residential proxy (Cloudflare-protected). Returns title, company, location, remote flag, salary, posted date, description and apply URL from each posting's schema.org JobPosting data.",
+    "version": "0.1",
+    "meta": {
+        "templateId": "python-playwright"
+    },
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json"
+}
