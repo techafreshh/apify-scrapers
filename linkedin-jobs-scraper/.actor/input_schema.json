@@ -10,11 +10,18 @@
             "default": ["AI Automation", "Python Developer"],
             "editor": "stringList"
         },
+        "locations": {
+            "title": "Locations",
+            "type": "array",
+            "description": "Locations to search, one pass each. Use countries/cities (e.g. ['Nigeria', 'Africa']) — LinkedIn's guest API ignores 'Worldwide' and returns city-locked cards instead.",
+            "default": ["Nigeria", "Africa"],
+            "editor": "stringList"
+        },
         "location": {
-            "title": "Location",
+            "title": "Location (legacy)",
             "type": "string",
-            "description": "Location to search in (e.g. 'Worldwide', 'United States', 'Remote', 'London')",
-            "default": "Worldwide",
+            "description": "Single location used only when `locations` is empty. 'Worldwide' is ignored by LinkedIn.",
+            "default": "Nigeria",
             "editor": "textfield"
         },
         "remoteOnly": {

@@ -15,6 +15,10 @@ TIME_FILTERS = {
     "past_month": "r2592000",
 }
 
+# location values the guest API silently ignores — it returns city-locked cards
+# (Cork, Paris, Madrid…) instead of worldwide ones. Verified 2026-11-24.
+IGNORED_LOCATIONS = {"worldwide", "remote", "anywhere", "global"}
+
 
 async def fetch_job_details(
     client: httpx.AsyncClient, job_id: str
@@ -45,6 +49,26 @@ async def fetch_job_details(
         return {"description": None, "criteria": []}
 
 
+async def fetch_with_backoff(
+    client: httpx.AsyncClient, url: str, label: str, max_attempts: int = 3
+) -> Optional[httpx.Response]:
+    """GET with exponential backoff on 429 (5s → 10s → 20s).
+
+    Without a proxy LinkedIn throttles almost every request; three attempts per
+    page lets the run survive the throttle instead of dying on the first 429
+    (which is what produced 0-item runs).
+    """
+    resp = await client.get(url)
+    attempt = 0
+    while resp.status_code == 429 and attempt < max_attempts:
+        wait = 5 * (2 ** attempt)
+        Actor.log.warning(f"429 for {label}; backing off {wait}s (attempt {attempt + 1}/{max_attempts})")
+        await asyncio.sleep(wait)
+        resp = await client.get(url)
+        attempt += 1
+    return resp
+
+
 async def main() -> None:
     async with Actor:
         actor_input = await Actor.get_input() or {}
@@ -52,14 +76,29 @@ async def main() -> None:
         if isinstance(queries, str):
             queries = [queries]
 
-        location: str = actor_input.get("location", "Worldwide")
+        # Multi-location input (2026-11-24). `location=Worldwide` is IGNORED by
+        # the guest API — it returns city-locked cards — so a country/city is the
+        # only useful value. `location` stays for back-compat.
+        locations_in = actor_input.get("locations")
+        if isinstance(locations_in, str):
+            locations = [locations_in]
+        elif isinstance(locations_in, list) and locations_in:
+            locations = [str(x) for x in locations_in]
+        else:
+            locations = [actor_input.get("location") or "Nigeria"]
+        if any(loc.strip().lower() in IGNORED_LOCATIONS for loc in locations):
+            Actor.log.warning(
+                "location=Worldwide/Remote is ignored by LinkedIn's guest API "
+                "(it returns city-locked cards). Use a country such as 'Nigeria'."
+            )
+
         remote_only: bool = actor_input.get("remoteOnly", True)
         time_filter: str = actor_input.get("timeFilter", "past_week")
         max_jobs: int = int(actor_input.get("maxJobs", 30))
         fetch_details: bool = actor_input.get("fetchDetails", True)
 
         Actor.log.info(
-            f"Starting LinkedIn Jobs Scraper: Queries={queries}, Location='{location}', "
+            f"Starting LinkedIn Jobs Scraper: Queries={queries}, Locations={locations}, "
             f"RemoteOnly={remote_only}, TimeFilter='{time_filter}', MaxJobs={max_jobs}"
         )
 
@@ -82,7 +121,7 @@ async def main() -> None:
                 proxy_url = f"http://groups-{groups[0]}:{proxy_pwd}@proxy.apify.com:8000"
                 Actor.log.info(f"Initialized Apify Proxy fallback via APIFY_PROXY_PASSWORD ({groups[0]}).")
             else:
-                Actor.log.warning("No proxy password found. Running without proxy.")
+                Actor.log.warning("No proxy password found. Running without proxy (slower pacing).")
 
         headers = {
             "User-Agent": (
@@ -96,121 +135,147 @@ async def main() -> None:
 
         seen_job_ids = set()
         harvested_count = 0
+        # Pacing depends on whether a proxy is available: without one LinkedIn
+        # 429s almost every request, so slow down and retry with backoff.
+        page_delay = 1.0 if proxy_url else 2.5
+        detail_delay = 0.4 if proxy_url else 0.9
 
-        async with httpx.AsyncClient(proxy=proxy_url, headers=headers, timeout=20.0, follow_redirects=True) as client:
-            for query in queries:
+        async with httpx.AsyncClient(
+            proxy=proxy_url, headers=headers, timeout=20.0, follow_redirects=True
+        ) as client:
+            for location in locations:
                 if harvested_count >= max_jobs:
                     break
 
-                Actor.log.info(f"Scanning listings for query: '{query}'")
-                offset = 0
-                query_exhausted = False
+                for query in queries:
+                    if harvested_count >= max_jobs:
+                        break
 
-                while harvested_count < max_jobs and not query_exhausted and offset < 200:
-                    params: Dict[str, Any] = {
-                        "keywords": query,
-                        "location": location,
-                        "start": offset,
-                    }
-                    if remote_only:
-                        params["f_WT"] = "2"
-                    if time_filter in TIME_FILTERS:
-                        params["f_TPR"] = TIME_FILTERS[time_filter]
+                    Actor.log.info(f"Scanning listings for query: '{query}' in '{location}'")
+                    offset = 0
+                    query_exhausted = False
 
-                    search_url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?{urllib.parse.urlencode(params)}"
+                    while harvested_count < max_jobs and not query_exhausted and offset < 100:
+                        params: Dict[str, Any] = {
+                            "keywords": query,
+                            "location": location,
+                            "start": offset,
+                        }
+                        if remote_only:
+                            params["f_WT"] = "2"
+                        if time_filter in TIME_FILTERS:
+                            params["f_TPR"] = TIME_FILTERS[time_filter]
 
-                    try:
-                        resp = await client.get(search_url)
-                        if resp.status_code == 429:
-                            Actor.log.warning(f"Rate limited (429) for '{query}' offset {offset}. Backing off 3s and retrying...")
-                            await asyncio.sleep(3.0)
-                            resp = await client.get(search_url)
+                        search_url = (
+                            "https://www.linkedin.com/jobs-guest/jobs/api/"
+                            f"seeMoreJobPostings/search?{urllib.parse.urlencode(params)}"
+                        )
 
-                        if resp.status_code != 200:
-                            Actor.log.warning(f"Query '{query}' offset {offset} returned status {resp.status_code}")
-                            break
-
-                        soup = BeautifulSoup(resp.text, "html.parser")
-                        cards = soup.select(".base-search-card, li")
-                        if not cards:
-                            Actor.log.info(f"No more cards found for query '{query}' at offset {offset}")
-                            query_exhausted = True
-                            break
-
-                        batch_found = 0
-                        for card in cards:
-                            if harvested_count >= max_jobs:
+                        try:
+                            resp = await fetch_with_backoff(
+                                client, search_url, f"'{query}' @ {location} offset {offset}"
+                            )
+                            if resp is None or resp.status_code == 429:
+                                Actor.log.warning(
+                                    f"Still rate-limited after retries — skipping remaining offsets for '{query}'"
+                                )
+                                query_exhausted = True
                                 break
 
-                            link_el = card.select_one("a.base-card__full-link")
-                            urn = card.get("data-entity-urn", "")
-                            job_id = None
+                            if resp.status_code != 200:
+                                Actor.log.warning(
+                                    f"Query '{query}' offset {offset} returned status {resp.status_code}"
+                                )
+                                break
 
-                            if urn and ":" in urn:
-                                job_id = urn.split(":")[-1]
-                            elif link_el and link_el.get("href"):
-                                m = re.search(r"-(\d+)(?:\?|$)", link_el["href"])
-                                if m:
-                                    job_id = m.group(1)
+                            soup = BeautifulSoup(resp.text, "html.parser")
+                            cards = soup.select("div.base-search-card")
+                            if not cards:
+                                Actor.log.info(
+                                    f"No more cards found for query '{query}' at offset {offset}"
+                                )
+                                query_exhausted = True
+                                break
 
-                            if not job_id or job_id in seen_job_ids:
-                                continue
+                            batch_found = 0
+                            for card in cards:
+                                if harvested_count >= max_jobs:
+                                    break
 
-                            seen_job_ids.add(job_id)
-                            batch_found += 1
+                                link_el = card.select_one("a.base-card__full-link")
+                                urn = card.get("data-entity-urn", "")
+                                job_id = None
 
-                            title_el = card.select_one("h3.base-search-card__title")
-                            company_el = card.select_one("h4.base-search-card__subtitle")
-                            loc_el = card.select_one("span.job-search-card__location")
-                            time_el = card.select_one("time")
+                                if urn and ":" in urn:
+                                    job_id = urn.split(":")[-1]
+                                elif link_el and link_el.get("href"):
+                                    m = re.search(r"-(\d+)(?:\?|$)", link_el["href"])
+                                    if m:
+                                        job_id = m.group(1)
 
-                            title = title_el.get_text(strip=True) if title_el else "Unknown Role"
-                            company = company_el.get_text(strip=True) if company_el else "Unknown Company"
-                            job_loc = loc_el.get_text(strip=True) if loc_el else location
+                                if not job_id or job_id in seen_job_ids:
+                                    continue
 
-                            raw_href = link_el.get("href", "") if link_el else ""
-                            job_url = raw_href.split("?")[0] if raw_href else f"https://www.linkedin.com/jobs/view/{job_id}"
+                                seen_job_ids.add(job_id)
+                                batch_found += 1
 
-                            posted_at = None
-                            if time_el:
-                                posted_at = time_el.get("datetime") or time_el.get_text(strip=True)
+                                title_el = card.select_one("h3.base-search-card__title")
+                                company_el = card.select_one("h4.base-search-card__subtitle")
+                                loc_el = card.select_one("span.job-search-card__location")
+                                time_el = card.select_one("time")
 
-                            # Fetch complete description and criteria if enabled
-                            description = None
-                            criteria = []
-                            if fetch_details:
-                                details = await fetch_job_details(client, job_id)
-                                description = details.get("description")
-                                criteria = details.get("criteria", [])
-                                await asyncio.sleep(0.4)
+                                title = title_el.get_text(strip=True) if title_el else "Unknown Role"
+                                company = company_el.get_text(strip=True) if company_el else "Unknown Company"
+                                job_loc = loc_el.get_text(strip=True) if loc_el else location
 
-                            record = {
-                                "id": job_id,
-                                "title": title,
-                                "company": company,
-                                "location": job_loc,
-                                "url": job_url,
-                                "posted_at": posted_at,
-                                "description": description or f"{title} at {company}",
-                                "criteria": criteria,
-                                "search_query": query,
-                                "source": "linkedin_guest",
-                            }
+                                raw_href = link_el.get("href", "") if link_el else ""
+                                job_url = (
+                                    raw_href.split("?")[0]
+                                    if raw_href
+                                    else f"https://www.linkedin.com/jobs/view/{job_id}"
+                                )
 
-                            await Actor.push_data(record)
-                            harvested_count += 1
-                            Actor.log.info(f"[{harvested_count}/{max_jobs}] Saved: {title} @ {company}")
+                                posted_at = None
+                                if time_el:
+                                    posted_at = time_el.get("datetime") or time_el.get_text(strip=True)
 
-                        if batch_found == 0:
-                            query_exhausted = True
+                                # Fetch complete description and criteria if enabled
+                                description = None
+                                criteria = []
+                                if fetch_details:
+                                    details = await fetch_job_details(client, job_id)
+                                    description = details.get("description")
+                                    criteria = details.get("criteria", [])
+                                    await asyncio.sleep(detail_delay)
+
+                                record = {
+                                    "id": job_id,
+                                    "title": title,
+                                    "company": company,
+                                    "location": job_loc,
+                                    "url": job_url,
+                                    "posted_at": posted_at,
+                                    "description": description or f"{title} at {company}",
+                                    "criteria": criteria,
+                                    "search_query": query,
+                                    "search_location": location,
+                                    "source": "linkedin_guest",
+                                }
+
+                                await Actor.push_data(record)
+                                harvested_count += 1
+                                Actor.log.info(f"[{harvested_count}/{max_jobs}] Saved: {title} @ {company}")
+
+                            if batch_found == 0:
+                                query_exhausted = True
+                                break
+
+                            offset += 25
+                            await asyncio.sleep(page_delay)
+
+                        except Exception as e:
+                            Actor.log.error(f"Error scraping LinkedIn search batch: {e}")
                             break
-
-                        offset += 25
-                        await asyncio.sleep(1.0)
-
-                    except Exception as e:
-                        Actor.log.error(f"Error scraping LinkedIn search batch: {e}")
-                        break
 
         Actor.log.info(f"LinkedIn scrape complete! Total positions harvested: {harvested_count}")
 
