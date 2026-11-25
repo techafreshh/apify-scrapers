@@ -30,9 +30,11 @@ Discovery uses `/recently-posted-jobs` plus bounded infinite scrolling — not
 
 ## Flow
 
-1. Open `/recently-posted-jobs`, wait out the Cloudflare interstitial (title/body
-   challenge markers), scroll up to `maxScrolls` times, collect `/job/<slug>`
-   links and their card text (title, company, location, date).
+1. Open `/recently-posted-jobs` with real Chrome (headful under Xvfb) through a
+   residential proxy, wait out the Cloudflare interstitial, scroll up to
+   `maxScrolls` times, and collect `/job/<slug>` links with their card leaves.
+   `innerText` collapses the card into "TitleCompanyLocation · date", so the
+   parser reads the leaf elements to keep title / company / location apart.
 2. For each link, open the posting and read its schema.org `JobPosting` JSON-LD:
    title, company, description, `baseSalary`, `jobLocation`,
    `applicantLocationRequirements`, `datePosted`, `employmentType`,
@@ -54,11 +56,14 @@ and exits with 0 rows instead of crashing.
 | Field | Default | Meaning |
 |---|---|---|
 | `queries` | `[]` | Keyword filter on card text (title/company/location) |
-| `maxJobs` | 50 | Postings saved (one proxy page load each) |
+| `maxJobs` | 50 | Postings saved |
+| `fetchDetails` | **false** | Open each posting for description/salary/apply URL. Blocked by Cloudflare today — see Verification status |
+| `listingAttempts` | 3 | Fresh proxy sessions when the listing is blocked |
 | `timeFilter` | `past_week` | `past_24h` / `past_week` / `past_month` / `any` (undated postings kept) |
 | `maxScrolls` | 6 | List scrolls before harvesting links |
 | `requestDelaySecs` | 3 | Pause between posting loads |
-| `headless` | true | Turn off to see what Cloudflare is showing |
+| `headless` | false | Keep off: the image runs under Xvfb, and headless is hard-blocked |
+| `diagnostics` | — | List of URLs to probe (status/title/body) and stop |
 | `proxyGroups` | `["RESIDENTIAL"]` | Used when `proxyConfiguration` is absent |
 | `proxyConfiguration` | residential | Full proxy config; overrides `proxyGroups` |
 
@@ -72,17 +77,34 @@ employment_type, salary_min, salary_max, salary_currency, salary_period,
 posted_at, description, apply_url, source_url, card_text, source, scraped_at`.
 See `.actor/dataset_schema.json`.
 
-## Verification status
+## Verification status (live, 2026-11-25)
 
-- **Parsers:** 24 offline checks pass — `python check_parse.py` (JSON-LD incl.
-  `@graph`, slug ids, DOM fallback, time window).
-- **Live:** pending a proxy run. The parsing was written against the schema.org
-  shape HiringCafe publishes for indexed postings plus a DOM fallback, so a
-  change in their markup degrades rather than empties the dataset. Run once from
-  the console and check the `blocked` count in the log before scheduling.
+| Path | Real Chrome + residential proxy | Verdict |
+|---|---|---|
+| `/recently-posted-jobs` | **HTTP 200**, full card list | allowed — this is the dataset |
+| `/jobs/<role>` (sitemap) | HTTP 403 "Just a moment…" challenge, never clears | blocked |
+| `/job/<slug>` (posting) | HTTP 403, then "Sorry, you have been blocked" (WAF) | blocked |
+
+Also tried and rejected: plain HTTP 403, TinyFish `bot_blocked`, headless Chrome
+from a home IP, Playwright Chromium, real Chrome (headful under Xvfb), **Patchright**
+(stealth Playwright), and the `UNBLOCKER` / `BUYPROXIES94952` proxy groups (tunnel
+errors or the same 403). Cloudflare's WAF matches the request shape on posting
+paths, not just the IP.
+
+**Consequence:** the actor works in list-only mode — `fetchDetails` defaults to
+**false**. Each row carries title, company, location and posted date parsed from
+the listing card (positional: title / company / `city, region, country · Mon DD`)
+plus the posting URL. `description` and `apply_url` are `null` because the only
+page carrying them is blocked; `detail_blocked` records whether a detail fetch was
+attempted and blocked.
+
+If Cloudflare relaxes, set `fetchDetails: true` and the existing JSON-LD/DOM
+pipeline fills description + salary + apply URL again.
 
 ## Notes
 
-- `apply_url` is the destination embedded in the posting page when present. The
-  `/applyclick` redirect is robots-disallowed and is never requested.
-- `description` is capped at 40k characters to keep dataset rows sane.
+- `apply_url` comes from the posting page; the `/applyclick` redirect is
+  robots-disallowed and is never requested.
+- `description` is capped at 40k characters.
+- `diagnostics` input: pass a list of URLs to get HTTP status/title/body per URL
+  and stop — the fastest way to re-check which paths Cloudflare still allows.

@@ -4,9 +4,12 @@
     "timeFilter": "past_week",
     "maxScrolls": 2,
     "requestDelaySecs": 3,
-    "headless": true,
+    "headless": false,
     "proxyConfiguration": {
         "useApifyProxy": true,
-        "apifyProxyGroups": ["RESIDENTIAL"]
-    }
+        "apifyProxyGroups": [
+            "RESIDENTIAL"
+        ]
+    },
+    "fetchDetails": false
 }

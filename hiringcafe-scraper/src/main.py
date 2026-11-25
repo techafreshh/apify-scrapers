@@ -46,6 +46,12 @@ CHALLENGE_MARKERS = (
     "performing security verification",
     "checking your browser",
     "enable javascript and cookies to continue",
+    # A WAF firewall block (different from the JS interstitial): the IP itself is
+    # burned, so the fix is a fresh proxy session, not more waiting.
+    "attention required",
+    "you have been blocked",
+    "unable to access",
+    "access denied",
 )
 
 TIME_FILTERS = {
@@ -223,6 +229,67 @@ def record_from_dom(page_data: Dict[str, Any], card_text: Optional[str]) -> Dict
     }
 
 
+def card_record(url: str, card: Any) -> Optional[Dict[str, Any]]:
+    """Build a record from a listing card.
+
+    HiringCafe cards render as three lines — title, company, "<city, region,
+    country> · <Mon DD>" — with no separators, so the fields are positional.
+    When the layout shifts and a line is missing, the remaining fields are left
+    null rather than guessed.
+    """
+    if isinstance(card, dict):
+        text = (card.get("text") or "").strip()
+        leaves = [str(x).strip() for x in (card.get("leaves") or []) if str(x).strip()]
+    else:
+        text = (card or "").strip()
+        leaves = []
+    if not text and not leaves:
+        return None
+    # Prefer the leaf split; fall back to innerText lines.
+    lines = leaves or [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return None
+
+    title = lines[0]
+    company = lines[1] if len(lines) >= 3 else None
+    tail = lines[-1] if len(lines) > 1 else ""
+
+    location = None
+    posted = None
+    if "·" in tail:
+        location_part, _, date_part = tail.partition("·")
+        location = location_part.strip() or None
+        date_part = date_part.strip()
+        try:
+            stamp = datetime.strptime(date_part, "%b %d").replace(year=datetime.now(timezone.utc).year)
+            posted = stamp.replace(tzinfo=timezone.utc).isoformat()
+        except ValueError:
+            posted = None
+    elif len(lines) >= 3:
+        location = tail or None
+
+    return {
+        "external_id": slug_id(urlparse(url).path),
+        "title": title,
+        "company": company,
+        "location": location,
+        "cities": None,
+        "countries": None,
+        "country": None,
+        "remote": "remote" in text.lower(),
+        "employment_type": None,
+        "salary_min": None,
+        "salary_max": None,
+        "salary_currency": None,
+        "salary_period": None,
+        "posted_at": posted,
+        "description": None,
+        "apply_url": None,
+        "source_url": url,
+        "source": "hiringcafe",
+    }
+
+
 def in_window(posted_at: Optional[str], cutoff: Optional[datetime]) -> bool:
     if cutoff is None:
         return True
@@ -237,6 +304,20 @@ def in_window(posted_at: Optional[str], cutoff: Optional[datetime]) -> bool:
     return stamp >= cutoff
 
 
+async def dump_debug(page: Any, label: str) -> None:
+    """Persist what the browser actually saw, so a failed run is diagnosable."""
+    try:
+        html = await page.content()
+        text = (await page.inner_text("body"))[:800] if await page.query_selector("body") else ""
+        Actor.log.warning(f"{label} page title: {(await page.title())[:120]}")
+        Actor.log.warning(f"{label} page body: {text[:400]!r}")
+        await Actor.set_value(f"debug-{label}.html", html, content_type="text/html")
+        png = await page.screenshot(full_page=False)
+        await Actor.set_value(f"debug-{label}.png", png, content_type="image/png")
+    except Exception as e:
+        Actor.log.warning(f"{label} debug dump failed: {type(e).__name__}: {e}")
+
+
 async def looks_blocked(page: Any) -> bool:
     try:
         title = (await page.title() or "").lower()
@@ -247,15 +328,34 @@ async def looks_blocked(page: Any) -> bool:
     return any(marker in haystack for marker in CHALLENGE_MARKERS)
 
 
+HARD_BLOCK_MARKERS = ("you have been blocked", "attention required", "unable to access")
+
+
+async def hard_blocked(page: Any) -> bool:
+    """True for a WAF firewall block — waiting cannot fix it, only a new IP can."""
+    try:
+        title = (await page.title() or "").lower()
+        body = (await page.inner_text("body"))[:800].lower() if await page.query_selector("body") else ""
+    except Exception:
+        return False
+    haystack = title + " " + body
+    return any(marker in haystack for marker in HARD_BLOCK_MARKERS)
+
+
 async def goto_clear(page: Any, url: str, label: str, attempts: int = 3) -> bool:
     """Navigate and wait out the Cloudflare interstitial. False if it never clears."""
     for attempt in range(attempts):
         try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=90_000)
+            response = await page.goto(url, wait_until="domcontentloaded", timeout=90_000)
+            Actor.log.info(f"{label}: HTTP {response.status if response else '?'} on attempt {attempt + 1}")
         except Exception as e:
             Actor.log.warning(f"{label}: navigation failed ({type(e).__name__})")
             await page.wait_for_timeout(3_000 * (attempt + 1))
             continue
+
+        if await hard_blocked(page):
+            Actor.log.warning(f"{label}: hard Cloudflare block on this IP — giving up on it")
+            return False
 
         for _ in range(12):
             await page.wait_for_timeout(2_500)
@@ -293,26 +393,125 @@ PAGE_SCRIPT = """
 """
 
 
+REAL_CHROME_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+)
+
+STEALTH_INIT = """
+Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+window.chrome = window.chrome || { runtime: {} };
+"""
+
+
 async def open_page(pw: Any, proxy: Optional[Dict[str, Any]], headless: bool) -> Any:
+    # `channel="chrome"` uses the real Chrome build shipped in the base image:
+    # Playwright's bundled Chromium is fingerprinted and hard-blocked by
+    # Cloudflare (403 "Sorry, you have been blocked"). The image runs under
+    # xvfb, so headful is available even with no display — headful is the
+    # variant Cloudflare actually lets through.
     browser = await pw.chromium.launch(
+        channel="chrome",
         headless=headless,
         proxy=proxy,
         args=[
             "--disable-blink-features=AutomationControlled",
             "--no-sandbox",
             "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--window-size=1440,900",
         ],
     )
     context = await browser.new_context(
         locale="en-US",
         timezone_id="Africa/Lagos",
         viewport={"width": 1440, "height": 900},
+        user_agent=REAL_CHROME_UA,
+        extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
     )
+    await context.add_init_script(STEALTH_INIT)
     return browser, context
 
 
+async def proxy_inputs(actor_input: Dict[str, Any]) -> Any:
+    """Build the Apify proxy configuration once; each new_url() call gets a fresh IP."""
+    explicit = actor_input.get("proxyConfiguration")
+    if isinstance(explicit, dict) and explicit:
+        return await Actor.create_proxy_configuration(actor_proxy_input=explicit)
+    groups = actor_input.get("proxyGroups") or DEFAULT_PROXY_GROUPS
+    if isinstance(groups, str):
+        groups = [groups]
+    Actor.log.info(f"Using Apify Proxy groups: {groups}")
+    return await Actor.create_proxy_configuration(groups=groups)
+
+
+async def proxy_kwargs(config: Any) -> Optional[Dict[str, Any]]:
+    """Resolve one proxy session into Playwright launch kwargs."""
+    if not config:
+        return None
+    proxy_url = await config.new_url()
+    scheme, rest = proxy_url.split("://", 1)
+    creds, host = rest.rsplit("@", 1)
+    username, _, password = creds.partition(":")
+    return {"server": f"{scheme}://{host}", "username": username, "password": password}
+
+
+async def collect_cards(
+    listing_page: Any,
+    max_scrolls: int,
+    query_words: List[str],
+    max_jobs: int,
+) -> Dict[str, Dict[str, Any]]:
+    """Scroll the recently-posted list and collect /job/ links with their card data."""
+    cards: Dict[str, Dict[str, Any]] = {}
+    for _ in range(max_scrolls + 1):
+        found = await listing_page.eval_on_selector_all(
+            'a[href*="/job/"]',
+            """els => els.map(e => ({
+                href: e.href,
+                text: (e.innerText || '').trim(),
+                // innerText collapses the card's stacked labels into one run-on
+                // string; the leaf elements keep title / company / location apart.
+                leaves: [...e.querySelectorAll('*')]
+                    .filter(x => x.children.length === 0)
+                    .map(x => (x.innerText || '').trim())
+                    .filter(Boolean)
+                    .slice(0, 8),
+            }))""",
+        )
+        for card in found:
+            href = card.get("href")
+            if not href:
+                continue
+            if not _JOB_PATH_RE.match(urlparse(href).path):
+                continue
+            if href in cards:
+                continue
+            if query_words and not any(
+                word in (card.get("text") or "").lower() for word in query_words
+            ):
+                continue
+            cards[href] = {"text": card.get("text") or "", "leaves": card.get("leaves") or []}
+
+        if len(cards) >= max_jobs * 2:
+            break
+        await listing_page.mouse.wheel(0, 5000)
+        await listing_page.wait_for_timeout(2_000)
+    return cards
+
+
 async def main() -> None:
-    from playwright.async_api import async_playwright
+    # Patchright is a patched Playwright build that removes the CDP/automation
+    # leaks Cloudflare's managed challenge fingerprints. It is a drop-in import;
+    # plain Playwright stays as the fallback so the actor still builds without it.
+    try:
+        from patchright.async_api import async_playwright
+        Actor.log.info("Using Patchright (stealth Playwright build)")
+    except ImportError:
+        from playwright.async_api import async_playwright
+        Actor.log.info("Using plain Playwright (Patchright unavailable)")
 
     async with Actor:
         actor_input = await Actor.get_input() or {}
@@ -322,104 +521,131 @@ async def main() -> None:
         max_jobs = int(actor_input.get("maxJobs", 50))
         time_filter = str(actor_input.get("timeFilter", "past_week"))
         max_scrolls = int(actor_input.get("maxScrolls", 6))
-        headless = bool(actor_input.get("headless", True))
+        headless = bool(actor_input.get("headless", False))
         delay = float(actor_input.get("requestDelaySecs", 3.0))
+        fetch_details = bool(actor_input.get("fetchDetails", False))
 
         delta = TIME_FILTERS.get(time_filter, TIME_FILTERS["past_week"])
         cutoff = datetime.now(timezone.utc) - delta if delta else None
 
-        proxy: Optional[Dict[str, Any]] = None
+        listing_attempts = int(actor_input.get("listingAttempts", 3))
         try:
-            explicit = actor_input.get("proxyConfiguration")
-            if isinstance(explicit, dict) and explicit:
-                config = await Actor.create_proxy_configuration(actor_proxy_input=explicit)
-            else:
-                groups = actor_input.get("proxyGroups") or DEFAULT_PROXY_GROUPS
-                if isinstance(groups, str):
-                    groups = [groups]
-                config = await Actor.create_proxy_configuration(groups=groups)
-                Actor.log.info(f"Using Apify Proxy groups: {groups}")
-            if config:
-                proxy_url = await config.new_url()
-                scheme, rest = proxy_url.split("://", 1)
-                creds, host = rest.rsplit("@", 1)
-                username, _, password = creds.partition(":")
-                proxy = {"server": f"{scheme}://{host}", "username": username, "password": password}
+            config = await proxy_inputs(actor_input)
         except Exception as e:
             Actor.log.warning(f"Proxy setup failed ({e}) — running without proxy (Cloudflare will very likely block)")
+            config = None
 
         Actor.log.info(
             f"Starting HiringCafe Scraper: queries={queries or 'all'}, maxJobs={max_jobs}, "
-            f"timeFilter={time_filter}, proxy={'yes' if proxy else 'no'}, headless={headless}"
+            f"timeFilter={time_filter}, proxy={'yes' if config else 'no'}, "
+            f"headless={headless}, listingAttempts={listing_attempts}"
         )
+
+        # Diagnostics mode: report HTTP status/title/snippet per URL and stop.
+        # Useful when Cloudflare changes which paths it blocks.
+        diagnostic_urls = actor_input.get("diagnostics") or []
+        if isinstance(diagnostic_urls, str):
+            diagnostic_urls = [diagnostic_urls]
+        if diagnostic_urls:
+            async with async_playwright() as pw:
+                proxy = await proxy_kwargs(config)
+                browser, context = await open_page(pw, proxy, headless)
+                page = await context.new_page()
+                for index, url in enumerate(diagnostic_urls):
+                    try:
+                        response = await page.goto(url, wait_until="domcontentloaded", timeout=60_000)
+                        await page.wait_for_timeout(4_000)
+                        title = await page.title()
+                        body = (await page.inner_text("body"))[:200] if await page.query_selector("body") else ""
+                        Actor.log.info(
+                            f"DIAG {url} -> HTTP {response.status if response else '?'} | "
+                            f"title={title[:80]!r} | body={body[:120]!r}"
+                        )
+                        await dump_debug(page, f"diag-{index}")
+                    except Exception as e:
+                        Actor.log.warning(f"DIAG {url} failed: {type(e).__name__}: {e}")
+                await browser.close()
+            return
 
         harvested = 0
         blocked = 0
         seen: set = set()
+        query_words = [q.lower() for q in queries if q and q.strip()]
 
         async with async_playwright() as pw:
-            browser, context = await open_page(pw, proxy, headless)
-            listing_page = await context.new_page()
+            cards: Dict[str, str] = {}
+            browser = None
+            context = None
+            listing_page = None
 
-            try:
-                if not await goto_clear(listing_page, RECENT_URL, "recently-posted"):
-                    Actor.log.error("Cloudflare never cleared the listing page — 0 rows this run")
-                    return
+            # A Cloudflare WAF block burns the IP, so each attempt gets a fresh
+            # proxy session and a fresh browser: waiting on a blocked IP is futile.
+            for attempt in range(1, listing_attempts + 1):
+                proxy = await proxy_kwargs(config)
+                if browser is not None:
+                    await browser.close()
+                browser, context = await open_page(pw, proxy, headless)
+                listing_page = await context.new_page()
+
+                if not await goto_clear(listing_page, RECENT_URL, f"recently-posted#{attempt}"):
+                    await dump_debug(listing_page, f"listing-attempt{attempt}")
+                    continue
 
                 try:
                     await listing_page.wait_for_selector('a[href*="/job/"]', timeout=45_000)
                 except Exception:
-                    Actor.log.error("Listing loaded but no /job/ links appeared — 0 rows this run")
-                    return
+                    await dump_debug(listing_page, f"listing-attempt{attempt}")
+                    continue
 
-                cards: Dict[str, str] = {}
-                query_words = [q.lower() for q in queries if q and q.strip()]
+                cards = await collect_cards(listing_page, max_scrolls, query_words, max_jobs)
+                if cards:
+                    Actor.log.info(f"listing: {len(cards)} candidate postings (attempt {attempt})")
+                    break
 
-                for _ in range(max_scrolls):
-                    found = await listing_page.eval_on_selector_all(
-                        'a[href*="/job/"]',
-                        """els => els.map(e => ({
-                            href: e.href,
-                            text: (e.innerText || '').trim(),
-                        }))""",
-                    )
-                    for card in found:
-                        href = card.get("href")
-                        if not href:
-                            continue
-                        path = urlparse(href).path
-                        if not _JOB_PATH_RE.match(path):
-                            continue
-                        if href in cards:
-                            continue
-                        if query_words and not any(
-                            word in (card.get("text") or "").lower() for word in query_words
-                        ):
-                            continue
-                        cards[href] = card.get("text") or ""
+                Actor.log.warning(f"attempt {attempt}: page loaded but produced no cards")
+                await dump_debug(listing_page, f"listing-attempt{attempt}")
 
-                    if len(cards) >= max_jobs * 2:
-                        break
-                    await listing_page.mouse.wheel(0, 5000)
-                    await listing_page.wait_for_timeout(2_000)
+            if not cards:
+                Actor.log.error(
+                    f"Could not obtain any postings after {listing_attempts} proxy sessions — "
+                    "try proxyGroups ['RESIDENTIAL'], ['UNBLOCKER'] or ['BUYPROXIES94952']"
+                )
+                if browser is not None:
+                    await browser.close()
+                return
 
-                Actor.log.info(f"listing: {len(cards)} candidate postings")
-
-                detail_page = await context.new_page()
-                for url, card_text in cards.items():
+            try:
+                detail_page = await context.new_page() if fetch_details else None
+                for url, card in cards.items():
                     if harvested >= max_jobs:
                         break
 
-                    if not await goto_clear(detail_page, url, f"job {slug_id(urlparse(url).path)}"):
-                        blocked += 1
-                        continue
-
-                    page_data = await detail_page.evaluate(PAGE_SCRIPT)
-                    postings = page_data.get("ld_json") or []
-                    if postings:
-                        record = record_from_jsonld(postings[0], url)
+                    # Cloudflare currently hard-blocks /job/* and /jobs/* even for
+                    # a real Chrome + residential proxy (verified 2026-11-25), so
+                    # detail fetching is opt-in: the listing alone gives title,
+                    # company, location, date and URL, which is honest and cheap.
+                    detail_ok = False
+                    if fetch_details and detail_page is not None:
+                        detail_ok = await goto_clear(
+                            detail_page, url, f"job {slug_id(urlparse(url).path)}", attempts=1
+                        )
+                    if not detail_ok:
+                        if fetch_details:
+                            blocked += 1
+                            if blocked == 1:
+                                await dump_debug(detail_page, "detail-blocked")
+                        record = card_record(url, card)
+                        if not record:
+                            continue
+                        record["detail_blocked"] = bool(fetch_details)
                     else:
-                        record = record_from_dom(page_data, card_text)
+                        page_data = await detail_page.evaluate(PAGE_SCRIPT)
+                        postings = page_data.get("ld_json") or []
+                        if postings:
+                            record = record_from_jsonld(postings[0], url)
+                        else:
+                            record = record_from_dom(page_data, (card or {}).get("text") if isinstance(card, dict) else card)
+                        record["detail_blocked"] = False
 
                     if not record.get("title"):
                         Actor.log.warning(f"skipping {url}: no title could be extracted")
@@ -431,16 +657,18 @@ async def main() -> None:
 
                     seen.add(record.get("external_id"))
                     record["description"] = (record.get("description") or "")[:40_000] or None
-                    record["card_text"] = card_text or None
+                    record["card_text"] = (card or {}).get("text") if isinstance(card, dict) else (card or None)
                     record["scraped_at"] = datetime.now(timezone.utc).isoformat()
 
                     await Actor.push_data(record)
                     harvested += 1
                     Actor.log.info(
                         f"[{harvested}/{max_jobs}] Saved: {record.get('title')} @ "
-                        f"{record.get('company') or '?'} ({record.get('country') or '?'})"
+                        f"{record.get('company') or '?'} "
+                        f"({record.get('location') or record.get('country') or '?'})"
                     )
-                    await detail_page.wait_for_timeout(delay * 1000)
+                    if detail_page is not None:
+                        await detail_page.wait_for_timeout(delay * 1000)
 
                 Actor.log.info(
                     f"HiringCafe scrape complete! Jobs harvested: {harvested}, "

@@ -23,8 +23,18 @@
             "type": "string",
             "description": "Keep postings whose posted date falls inside this window. Postings without a parseable date are kept.",
             "default": "past_week",
-            "enum": ["past_24h", "past_week", "past_month", "any"],
-            "enumTitles": ["Past 24 hours", "Past week", "Past month", "Any"],
+            "enum": [
+                "past_24h",
+                "past_week",
+                "past_month",
+                "any"
+            ],
+            "enumTitles": [
+                "Past 24 hours",
+                "Past week",
+                "Past month",
+                "Any"
+            ],
             "editor": "select"
         },
         "maxScrolls": {
@@ -48,15 +58,26 @@
         "headless": {
             "title": "Headless",
             "type": "boolean",
-            "description": "Run without a visible window. Turn off to debug what Cloudflare is showing.",
-            "default": true,
+            "description": "Run a truly headless browser. Keep OFF on Apify: the image runs under xvfb, so 'headful' needs no display, and Cloudflare hard-blocks the headless fingerprint. Only turn on for local debugging.",
+            "default": false,
             "editor": "checkbox"
+        },
+        "listingAttempts": {
+            "title": "Listing Attempts",
+            "type": "integer",
+            "description": "How many proxy sessions to try when Cloudflare blocks the listing. A WAF block burns the IP, so each attempt gets a fresh session.",
+            "default": 3,
+            "minimum": 1,
+            "maximum": 10,
+            "editor": "number"
         },
         "proxyGroups": {
             "title": "Apify Proxy Groups",
             "type": "array",
             "description": "Proxy groups used when proxyConfiguration is not supplied. Residential is what Cloudflare expects; BUYPROXIES94952 / StaticUS3 are cheaper fallbacks.",
-            "default": ["RESIDENTIAL"],
+            "default": [
+                "RESIDENTIAL"
+            ],
             "editor": "stringList"
         },
         "proxyConfiguration": {
@@ -66,8 +87,17 @@
             "editor": "proxy",
             "default": {
                 "useApifyProxy": true,
-                "apifyProxyGroups": ["RESIDENTIAL"]
+                "apifyProxyGroups": [
+                    "RESIDENTIAL"
+                ]
             }
+        },
+        "fetchDetails": {
+            "title": "Fetch Full Descriptions",
+            "type": "boolean",
+            "description": "Open each posting for description/salary/apply URL. OFF by default: Cloudflare hard-blocks /job/* and /jobs/* even for real Chrome + residential proxy (verified 2026-11-25), so list-only mode is the working, honest configuration.",
+            "default": false,
+            "editor": "checkbox"
         }
     },
     "required": []
